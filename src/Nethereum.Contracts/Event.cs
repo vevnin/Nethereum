@@ -140,8 +140,8 @@ namespace Nethereum.Contracts
         public async Task<List<EventLog<T>>> GetAllChanges<T>(NewFilterInput filterInput) where T : new()
         {
             if(!EventBuilder.IsFilterInputForEvent(filterInput)) throw new Exception("Invalid filter input for current event, use CreateFilterInput");
-            var logs = await EthGetLogs.SendRequestAsync(filterInput).ConfigureAwait(false);
-            return DecodeAllEvents<T>(logs);
+            var logs = await EthGetLogs.SendRequestAsync(filterInput).ConfigureAwait(true);
+            return EventBuilder.DecodeAllEventsUpdated<T>(logs);
         }
 
         public async Task<List<EventLog<T>>> GetAllChanges<T>(HexBigInteger filterId) where T : new()

@@ -7,6 +7,17 @@ namespace Nethereum.ABI.FunctionEncoding
 {
     public class EventTopicDecoder : ParameterDecoder
     {
+        private readonly bool _isAnonymousEvent;
+
+        public EventTopicDecoder() : this(false)
+        {
+        }
+
+        public EventTopicDecoder(bool isAnonymousEvent)
+        {
+            _isAnonymousEvent = isAnonymousEvent;
+        }
+
         public T DecodeTopics<T>(object[] topics, string data) where T : new()
         {
             var type = typeof(T);
@@ -23,34 +34,37 @@ namespace Nethereum.ABI.FunctionEncoding
             var topicNumber = 0;
             foreach (var topic in topics)
             {
-                //skip the first one as it is the signature
-                if (topicNumber > 0)
+                //skip the first one as it is the signature if event is not anonymous
+                if (!_isAnonymousEvent && topicNumber == 0)
                 {
-                    var property = indexedProperties[topicNumber - 1];
-                        
-                    var attribute = property.GetCustomAttribute<ParameterAttribute>();
-                    //skip dynamic types as the topic value is the sha3 keccak
-                    if (!attribute.Parameter.ABIType.IsDynamic())
-                    {
-                        result = DecodeAttributes(topic.ToString(), result, property);
-                    }
-                    else
-                    {
-                        if (property.PropertyType != typeof(string))
-                            throw new Exception(
-                                "Indexed Dynamic Types (string, arrays) value is the Keccak SHA3 of the value, the property type of " +
-                                property.Name + "should be a string");
+                    topicNumber = topicNumber + 1;
+                    continue;
+                }
+
+                var property = _isAnonymousEvent ? indexedProperties[topicNumber] : indexedProperties[topicNumber - 1];
+                var attribute = property.GetCustomAttribute<ParameterAttribute>();
+                //skip dynamic types as the topic value is the sha3 keccak
+                if (!attribute.Parameter.ABIType.IsDynamic())
+                {
+                    result = DecodeAttributes(topic.ToString(), result, property);
+                }
+                else
+                {
+                    if (property.PropertyType != typeof(string))
+                        throw new Exception(
+                            "Indexed Dynamic Types (string, arrays) value is the Keccak SHA3 of the value, the property type of " +
+                            property.Name + "should be a string");
 #if DOTNET35
                         property.SetValue(result, topic.ToString(), null);
 #else
-                        property.SetValue(result, topic.ToString());
+                    property.SetValue(result, topic.ToString());
 #endif
-                    }
                 }
+
                 topicNumber = topicNumber + 1;
             }
 
-           // var dataProperties = properties.Where(x => x.GetCustomAttribute<ParameterAttribute>().Order >= topicNumber);
+            // var dataProperties = properties.Where(x => x.GetCustomAttribute<ParameterAttribute>().Order >= topicNumber);
             result = DecodeAttributes(data, result, dataProperties.ToArray());
             return result;
         }

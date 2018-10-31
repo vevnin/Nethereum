@@ -17,6 +17,8 @@ namespace Nethereum.ABI.Model
 
         public Parameter[] InputParameters { get; set; }
 
+        public bool IsAnonymous { get; set; } = false;
+
         public string Sha33Signature
         {
             get

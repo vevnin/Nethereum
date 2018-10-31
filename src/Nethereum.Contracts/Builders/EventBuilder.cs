@@ -72,7 +72,7 @@ namespace Nethereum.Contracts
         }
 
 
-        public bool IsFilterInputForEvent(NewFilterInput filterInput)
+        public bool IsFilterInputForEvent(NewFilterInput filterInput, bool isAnonymous = false)
         {
             if (filterInput.Topics != null && filterInput.Topics.Length > 0)
             {
@@ -80,9 +80,21 @@ namespace Nethereum.Contracts
                 {
                     return false;
                 }
-                var eventtopic = filterInput.Topics[0].ToString();
-                if (EventABI.Sha33Signature.IsTheSameHex(eventtopic))
+
+                if (EventABI.IsAnonymous) return true;
+
+                if (filterInput.Topics[0] is string[] strings && strings.Any(x => EventABI.Sha33Signature.IsTheSameHex(x)))
+                {
                     return true;
+                }
+                else if (EventABI.Sha33Signature.IsTheSameHex(filterInput.Topics[0].ToString()))
+                {
+                    return true;
+                }
+
+                //var eventtopic = filterInput.Topics[0].ToString();
+                //if (EventABI.Sha33Signature.IsTheSameHex(eventtopic))
+                //    return true;
             }
             return false;
         }
@@ -133,6 +145,19 @@ namespace Nethereum.Contracts
             var result = new List<EventLog<T>>();
             if (logs == null) return result;
             var eventDecoder = new EventTopicDecoder();
+            foreach (var log in logs)
+            {
+                var eventObject = eventDecoder.DecodeTopics<T>(log.Topics, log.Data);
+                result.Add(new EventLog<T>(eventObject, log));
+            }
+            return result;
+        }
+
+        public List<EventLog<T>> DecodeAllEventsUpdated<T>(FilterLog[] logs) where T : new()
+        {
+            var result = new List<EventLog<T>>();
+            if (logs == null) return result;
+            var eventDecoder = new EventTopicDecoder(EventABI.IsAnonymous);
             foreach (var log in logs)
             {
                 var eventObject = eventDecoder.DecodeTopics<T>(log.Topics, log.Data);
